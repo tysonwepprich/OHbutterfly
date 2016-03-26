@@ -1,9 +1,9 @@
 library(shiny)
 library(shinythemes)
 library(shinyBS)
-# library(rCharts)
-# library(plyr)
+library(DT)
 library(leaflet)
+library(dplyr)
 # lapply(list.files(pattern="^cc4lite_launch_.*.\\.RData$"), load, envir=.GlobalEnv)
 # caption <- 'Due to inter-annual variability and model uncertainty, these graphs are useful for examining a range of projected trends, but not for precise prediction. For more information regarding climate projections, please visit'
 # dec.lab <- paste0(seq(2010, 2090, by=10), "s")

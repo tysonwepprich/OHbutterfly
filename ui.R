@@ -11,8 +11,6 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                                              fluidRow(
                                                column(4, selectInput("variable", "Variable", c("surv.richness", "surv.total.counted"), 
                                                                      selected="surv.richness", multiple=FALSE, width="100%"))
-                                               # column(4, selectInput("units", "Units", c("All", "Year"), selected="C, mm", multiple=F, width="100%")),
-                                               # column(4, selectInput("rcp", "RCP", c("4.5 (low)", "6.0 (medium)", "8.5 (high)"), selected="6.0 (medium)", multiple=F, width="100%"))
                                              )
                                       )
                                     ),
@@ -22,10 +20,11 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                                     fluidRow(
                                       column(6, leafletOutput("Map")),
                                       column(6,
-                                             plotOutput("graph")
-                                             # showOutput("Chart1", "highcharts"),
-                                             # HTML('<style>.rChart {width: 100%; height: "auto"}</style>')
-                                      )
+                                             plotOutput("graph"))
+                                    ),
+                            br(),
+                                    fluidRow(
+                                      column(6, DT::dataTableOutput("table"))
                                     ),
                                     br(),
                                     fluidRow(
@@ -37,7 +36,7 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                                             HTML('
                                                  <p style="text-align:justify">Information can go here.</p>
                                                  
-                                                 <p style="text-align:justify">Even more can go here!</p>'
+                                                 <p style="text-align:justify">Even more can go here.</p>'
                                                  
                                             )),
                                     
@@ -45,10 +44,9 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                                             HTML('
                                                  <p style="text-align:justify">Explaining where these numbers come from.</p>
                                                  
-                                                 <p style="text-align:justify">It is real math.</p>
-                                                 More information on these RCPs can be found in the 2014 IPCC fifth Assessment Report.'
+                                                 <p style="text-align:justify">It is real math.</p>'
                                             ))
-                                            ),
+                   ), # close tab 1
                    
                    tabPanel("Species abundance trends",
                             
@@ -57,7 +55,7 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                               column(8,
                                      fluidRow(
                                        column(6, selectizeInput("species", "Common name of species", sort(unique(spec.sites$CommonName)), selected="", multiple=F, width="100%")),
-                                       column(6, selectizeInput("location2", "Monitoring Site", sort(unique(spec.sites$location)), selected="", multiple=F, width="100%"))
+                                       column(6, uiOutput("siteOutput"))
                                      )
                               )
                             ),
@@ -65,11 +63,10 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                             # bsTooltip("dec", "Select decades for projected climate. A 30-year historical baseline is automatically included in the plot.", "top", options = list(container="body")),
                             # bsTooltip("rcp", "Representative Concentration Pathways, covering a range of possible future climates based on atmospheric greenhouse gas concentrations.", "top", options = list(container="body")),
                             fluidRow(
-                              column(6, leafletOutput("Map2")),
-                              column(6,
-                                     plotOutput("graph2")
-            
-                              )
+                              column(4, leafletOutput("Map2")),
+                              column(4,
+                                     plotOutput("graph2a")),
+                              column(4, plotOutput("graph2b"))
                             ),
                             br(),
                             fluidRow(
@@ -81,7 +78,7 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                                     HTML('
                                          <p style="text-align:justify">Information can go here.</p>
                                          
-                                         <p style="text-align:justify">Even more can go here!</p>'
+                                         <p style="text-align:justify">Even more can go here.</p>'
                                          
                                     )),
                             
@@ -89,8 +86,7 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                                     HTML('
                                          <p style="text-align:justify">Explaining where these numbers come from.</p>
                                          
-                                         <p style="text-align:justify">It is real math.</p>
-                                         More information on these RCPs can be found in the 2014 IPCC fifth Assessment Report.'
+                                         <p style="text-align:justify">It is real math.</p>'
                                     ))
                                     ),
                    tabPanel("about",
