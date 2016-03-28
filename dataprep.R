@@ -12,6 +12,7 @@ raw <- read_csv(file = "C:/Users/Tyson/Desktop/Box Sync/Ohio/data2012/data.trim.
 raw <- raw %>% mutate(SiteID = formatC(SiteID.x, width = 3, format = "d", flag = "0"),
                       SiteDate = ymd(as.character(SiteDate)),
                       Year = year(SiteDate))
+raw$CommonName[raw$CommonName == "Spring/Summer Azure"] <- "Azures"
 
 surveys <- distinct(raw[, c("SeqID", "SiteID", "SiteDate", "Week")])
 
@@ -42,7 +43,11 @@ for (i in 1:nrow(SpeciesList)){
   spdat <- raw %>% filter(CommonName == species) %>% select(CommonName, SeqID, SiteDate, Week, SiteID, Year, Total)
   test <- merge(surveys, spdat, by = c("SeqID", "SiteID", "SiteDate", "Week"), all.x = TRUE)
   test$Total <- plyr::mapvalues(test[, "Total"], from = NA, to = 0)
-  out <- test %>%
+  test2 <- test %>%
+    group_by(SiteID) %>%
+    mutate(Occupancy = length(which(Total > 0))/length(Total)) %>%
+    ungroup()
+  out <- test2 %>%
     group_by(Year) %>%
     mutate(YearTotal = sum(Total)) %>%
     filter(YearTotal > 0)
@@ -57,6 +62,23 @@ saveRDS(rawcounts, "rawcounts.rds")
 ############################################################
 # 1. raw site counts to plot on map by species, week, and year
 
+rawcounts <- readRDS('rawcounts.rds')
+
+# summarise rawcounts by site/year/species for tab 1
+counts <- rawcounts %>%
+  group_by(CommonName, Description.x, Year) %>%
+  summarise(TotalCount = sum(Total)) %>%
+  rename(location = Description.x) %>% 
+  data.frame()
+
+saveRDS(counts, "annualcounts.rds")
+
+# occupancy from rawcounts for each species x site
+siteocc <- rawcounts %>%
+  select(CommonName, Occupancy, Description.x, lat, lon) %>%
+  distinct()
+
+saveRDS(siteocc, "siteocc.rds")
 
 
 ############################################################
@@ -105,7 +127,6 @@ saveRDS(spec.trend, "spec.trend.rds")
 #############################################################
 # 3. Species richness at sites in different years and weeks
 
-rawcounts <- readRDS('rawcounts.rds')
 
 sites2map <- rawcounts %>%
   group_by(SiteID, Year, Week) %>%
@@ -116,10 +137,10 @@ sites2map <- rawcounts %>%
   mutate(grand.richness = length(unique(CommonName)),
          years.surved = length(unique(Year)),
          grand.total.counted = sum(Total)) %>%
-  select(-CommonName, -Total, -YearTotal, -Name)
+  select(-CommonName, -Total, -Occupancy, -YearTotal, -Name)
 
-# sites2map <- sites2map[-which(duplicated(sites2map$SeqID)), ]
-# saveRDS(sites2map, "sites2map.rds")
+sites2map <- sites2map[-which(duplicated(sites2map$SeqID)), ]
 
 sites2map <- gather(sites2map, variable, value, surv.richness:grand.total.counted)
 saveRDS(sites2map, "sites2map.rds")
+

@@ -3,7 +3,10 @@ library(shinythemes)
 library(shinyBS)
 library(DT)
 library(leaflet)
+library(plyr)
 library(dplyr)
+library(ggplot2)
+library(tidyr)
 # lapply(list.files(pattern="^cc4lite_launch_.*.\\.RData$"), load, envir=.GlobalEnv)
 # caption <- 'Due to inter-annual variability and model uncertainty, these graphs are useful for examining a range of projected trends, but not for precise prediction. For more information regarding climate projections, please visit'
 # dec.lab <- paste0(seq(2010, 2090, by=10), "s")
@@ -17,7 +20,22 @@ library(dplyr)
 sites2map <- readRDS("sites2map.rds")
 names(sites2map)[6] <- "location"
 names(sites2map)[8] <- "lng"
+sitesonly <- sites2map %>%
+  select(location, lat, lng) %>%
+  distinct() %>% as.data.frame()
+ # mutate(type = "notsel")
 
 spec.sites <- readRDS("spec.site.rds")
 spec.sites$Year <- as.numeric(as.character(spec.sites$Year))
 spec.trend <- readRDS("spec.trend.rds")
+
+ann.counts <- readRDS("annualcounts.rds")
+
+all.counts <- ann.counts %>% 
+  group_by(CommonName, location) %>%
+  summarise(GrandTotal = sum(TotalCount)) %>%
+  data.frame()
+
+siteocc <- readRDS("siteocc.rds")
+
+clicker <- NULL
