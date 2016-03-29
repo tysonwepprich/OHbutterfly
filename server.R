@@ -212,7 +212,8 @@ shinyServer(function(input, output, session){
       return(NULL)
     }else{
     selectizeInput("location2", "Location",
-                sort(unique(speciesData()$location)),
+                c("", sort(unique(speciesData()$location))),
+                # selected = "")
                 selected = sort(unique(speciesData()$location))[1])
     }
   })
@@ -280,40 +281,155 @@ shinyServer(function(input, output, session){
     if(is.null(input$species)){
       return(NULL)
     }else{
-      if(is.null(input$location2)){
-        spec.trend %>%
-          filter(CommonName == input$species) %>%
-          mutate(IndexValue = exp(CollInd),
-                 Index = "UKBMS_collated") %>%
-          arrange(Year)
+      if(input$species == ""){
+        return(NULL)
       }else{
-        dat1 <- spec.trend %>%
-          filter(CommonName == input$species) %>%
-          mutate(UKBMS_collated = exp(CollInd))
-        
-        dat2 <- speciesIndex() %>% 
-          filter(location == input$location2) %>%
-          mutate(UKBMS_site = TrpzInd)
-        
-        dat3 <- speciesData() %>%
-          filter(location == input$location2) %>%
-          mutate(Raw_count = TotalCount)
-           
-        dat4 <- merge(dat1, dat2, all.x = TRUE)
-        dat5 <- merge(dat4, dat3, by = c("CommonName","Year"), all.x = TRUE, all.y = TRUE)
-        dat6 <- dat5 %>%
-          select(CommonName, Year, UKBMS_collated, UKBMS_site, Raw_count) %>%
-          gather(Index, IndexValue, UKBMS_collated:Raw_count)
-        return(dat6)
+        if(is.null(input$location2)){
+          spec.trend %>%
+            filter(CommonName == input$species) %>%
+            mutate(IndexValue = exp(CollInd),
+                   Index = "UKBMS_collated") %>%
+            arrange(Year)
+        }else{
+          dat1 <- spec.trend %>%
+            filter(CommonName == input$species) %>%
+            mutate(UKBMS_collated = exp(CollInd))
+          
+          dat2 <- speciesIndex() %>% 
+            filter(location == input$location2) %>%
+            mutate(UKBMS_site = TrpzInd)
+          
+          dat3 <- speciesData() %>%
+            filter(location == input$location2) %>%
+            mutate(Raw_count = TotalCount)
+          
+          dat4 <- merge(dat1, dat2, all.x = TRUE)
+          dat5 <- merge(dat4, dat3, by = c("CommonName","Year"), all.x = TRUE, all.y = TRUE)
+          dat6 <- dat5 %>%
+            select(CommonName, Year, UKBMS_collated, UKBMS_site, Raw_count) %>%
+            gather(Index, IndexValue, UKBMS_collated:Raw_count)
+          return(dat6)
+        }
+      }
+    }  
+  })
+  
+  
+  output$graph2a <- renderPlot({
+    if(is.null(get_plot_data())){
+      return(NULL)
+    }else{
+      gr2a <- ggplot(data = get_plot_data(), aes(x = Year, y = IndexValue, group = Index, color = Index))
+      gr2a + geom_point(size = 5) + facet_wrap( ~ Index, ncol = 1, scales = "free_y") + xlim(1995, 2014) + 
+        expand_limits(x = 1995, y = 0) + theme(legend.position="none")
+    }
+  })
+  
+  
+################################################################
+  # tab 3: Phenology plots
+  
+  # output$species3Output <- renderUI({
+  #   if(is.null(speciesData())){
+  #     return(NULL)
+  #   }else{
+  #     selectizeInput("species3", "Common Name of species",
+  #                    c("", sort(unique(speciesData()$location))),
+  #                    # selected = "")
+  #                    selected = sort(unique(speciesData()$location))[1])
+  #   }
+  # })
+  
+  
+  
+  output$Map3 <- renderLeaflet({
+    leaflet() %>% addProviderTiles("CartoDB.Positron", options = tileOptions(minZoom = 6, maxZoom = 13)) %>% 
+      setView(lng=-82.7, lat=40.6, zoom=6) %>%
+      addCircleMarkers(data = sitesonly, radius = 10,
+                       color = "navy", stroke=FALSE, fillOpacity=0.5, layerId = sitesonly$location)
+  })
+  
+  # highlights selected marker
+  observeEvent(input$Map3_marker_click, {
+    p <- input$Map3_marker_click
+    leafletProxy("Map3") %>% 
+      setView(lng=p$lng, lat=p$lat, input$Map3_zoom) %>%
+      addCircleMarkers(p$lng, p$lat, radius=10, color="black", fillColor="orange", fillOpacity=1, opacity=1, stroke=TRUE, layerId ="Selected")
+    
+  })
+  
+  # updates location bar with clicked site
+  observeEvent(input$Map3_marker_click, {
+    p <- input$Map3_marker_click
+    if(!is.null(p$id)){
+      if(is.null(input$location3)) updateSelectInput(session, "location3", selected=p$id)
+      if(!is.null(input$location3) && input$location3!=p$id) updateSelectInput(session, "location3", selected=p$id)
+    }
+  })
+  
+  # marks selected site on map from location bar
+  observeEvent(input$location3, {
+    if(!is.null(input$Map3_marker_click)){
+      p <- input$Map3_marker_click
+      p2 <- subset(sitesonly, location==input$location3)
+      if(input$location3 != p$id){
+        leafletProxy("Map3") %>% 
+          setView(lng=p2$lng, lat=p2$lat, input$Map3_zoom) %>%
+          addCircleMarkers(p2$lng, p2$lat, radius=10, color="black", fillColor="orange", fillOpacity=1, opacity=1, stroke=TRUE, layerId ="Selected")
+      }
+    }else{
+      p2 <- subset(sitesonly, location==input$location3)
+      leafletProxy("Map") %>% 
+        setView(lng=p2$lng, lat=p2$lat, input$Map3_zoom) %>%
+        addCircleMarkers(p2$lng, p2$lat, radius=10, color="black", fillColor="orange", fillOpacity=1, opacity=1, stroke=TRUE, layerId ="Selected")
+    }
+    
+  })
+  
+  get_temp <- reactive({
+    if(is.null(input$location3)){
+      return(NULL)
+    }else{
+      if(input$location3 == ""){
+        return(NULL)
+      }else{
+        temperature[which(temperature$Description.x == input$location3), ]
+      }
+    }
+  })
+  
+  get_gdd <- reactive({
+    if(is.null(input$location3)){
+      return(NULL)
+    }else{
+      if(input$location3 == ""){
+        return(NULL)
+      }else{
+          gdd[which(gdd$Description.x == input$location3), ]
       }
     }
   })
   
   
-  output$graph2a <- renderPlot({
-   gr2a <- ggplot(data = get_plot_data(), aes(x = Year, y = IndexValue, group = Index, color = Index))
-   gr2a + geom_point(size = 5)
+  output$graph3a <- renderPlot({
+    if(is.null(get_temp())){
+      return(NULL)
+    }else{
+      gr3a <- ggplot(data = get_temp(), aes(x = month, y = Temperature_Anomaly, group = year, color = year))
+      gr3a + geom_line(size = 1) + theme(legend.position="none")
+    }
   })
+  
+  
+  output$graph3b <- renderPlot({
+    if(is.null(get_gdd())){
+      return(NULL)
+    }else{
+      gr3b <- ggplot(data = get_gdd(), aes(x = Ordinal, y = cumdegday, group = year, color = year))
+      gr3b + geom_line() +  scale_x_discrete(breaks = gdd$MonthN, labels = gdd$Month) + theme(legend.position="none")
+    }
+  })
+  
   
   
 })

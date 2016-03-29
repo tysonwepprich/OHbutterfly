@@ -7,6 +7,7 @@ library(plyr)
 library(dplyr)
 library(ggplot2)
 library(tidyr)
+library(scales)
 # lapply(list.files(pattern="^cc4lite_launch_.*.\\.RData$"), load, envir=.GlobalEnv)
 # caption <- 'Due to inter-annual variability and model uncertainty, these graphs are useful for examining a range of projected trends, but not for precise prediction. For more information regarding climate projections, please visit'
 # dec.lab <- paste0(seq(2010, 2090, by=10), "s")
@@ -38,4 +39,11 @@ all.counts <- ann.counts %>%
 
 siteocc <- readRDS("siteocc.rds")
 
-clicker <- NULL
+gdd <- readRDS("gdd.rds")
+gdd$year <- as.character(year(gdd$date))
+
+gdd$MonthN <- as.numeric(format(as.Date(gdd$date),"%m")) # Month's number
+gdd$Month  <- months(as.Date(gdd$date), abbreviate=TRUE) # Month's abbr.
+gdd$Ordinal <- yday(gdd$date)
+
+temperature <- readRDS("monthlyweather.rds")

@@ -49,8 +49,8 @@ for (i in 1:nrow(SpeciesList)){
     ungroup()
   out <- test2 %>%
     group_by(Year) %>%
-    mutate(YearTotal = sum(Total)) %>%
-    filter(YearTotal > 0)
+    mutate(YearTotal = sum(Total)) # %>%
+    # filter(YearTotal > 0)
   dat[[i]] <- out
 }
 allraw <- data.table::rbindlist(dat) #dplyr rbind_list has bug
@@ -108,6 +108,9 @@ allspphen <- data.table::rbindlist(phen_all)
 allspindex <- data.table::rbindlist(Pops)
 allspregindex <- data.table::rbindlist(RegIndex)
 
+setwd('../ohio_butterfly_dataviz')
+
+saveRDS(allspphen, "phenology.rds")
 
 # Need one df of species by site population size
 # one df of statewide collated index by species
@@ -124,11 +127,62 @@ spec.trend <- spec.trend[spec.trend$Region == "ALL", ]
 names(spec.trend)[1] <- "CommonName"
 saveRDS(spec.trend, "spec.trend.rds")
 
+############################################################
+# Weather and phenology at sites/statewide
+gdd <- readRDS("C:/Users/Tyson/Desktop/Box Sync/Ohio/daymet/growingDD_Daymet.RDS")
+weather <- readRDS('C:/Users/Tyson/REPO/Chap1-Bfly-Landuse-Climate/data/siteweathervars.rds')
+phenology <- readRDS('phenology.rds')
+rawcounts <- readRDS('rawcounts.rds')
+
+# weather data to plot mean seasonal temperatures
+weather1 <- weather[, grep("meanTemp", names(weather)), with = FALSE]
+weather1$SiteID <- weather$site
+weather1$Year <- weather$year
+weather <- weather1 %>%
+  mutate(SiteID = formatC(as.numeric(as.character(SiteID)), width = 3, format = "d", flag = "0"))
+weather <- merge(weather, sites, by = "SiteID")
+
+
+# test plot
+plotdat <- weather %>%
+  filter(SiteID == "001") %>%
+  gather(Season, Temperature, prevspr_meanTemp:currsum_meanTemp) %>%
+  filter(Season %in% c("winter_meanTemp", "spring_meanTemp", "currsum_meanTemp"))
+t <- ggplot(data = plotdat, aes(x = Season, y = Temperature, group = Year))
+t + geom_line()
+
+gdd <- gdd %>% data.frame() %>% filter(year >= 1995)
+test <- as.POSIXct(strptime(paste(gdd$year, gdd$yday, sep = " "), format = "%Y %j"))
+gdd$date <- test
+gdd$month <- month(gdd$date, label = TRUE)
+
+gdd$SiteID <- formatC(as.numeric(gdd$site), width = 3, format = "d", flag = "0")
+gdd$dailymean <- (gdd$tmax..deg.c. + gdd$tmin..deg.c.)/2
+
+monthmeans <- gdd %>%
+  group_by(SiteID, year, month) %>%
+  summarise(MeanTemperature = mean(dailymean))
+
+monthmeans <- monthmeans %>%
+  group_by(SiteID, month) %>%
+  mutate(MeanAllYears = mean(MeanTemperature)) %>%
+  mutate(Temperature_Anomaly = MeanTemperature - MeanAllYears)
+monthmeans <- merge(monthmeans, sites, by = "SiteID")
+
+gdd <- gdd %>%
+  dplyr::select(SiteID, date, cumdegday)
+
+gdd <- merge(gdd, sites, by = "SiteID")
+
+saveRDS(gdd, "gdd.rds")
+saveRDS(monthmeans, "monthlyweather.rds")
+
 #############################################################
 # 3. Species richness at sites in different years and weeks
 
 
 sites2map <- rawcounts %>%
+  filter(Total > 0) %>%
   group_by(SiteID, Year, Week) %>%
   mutate(surv.richness = length(unique(CommonName)),
          surv.total.counted = sum(Total)) %>%
