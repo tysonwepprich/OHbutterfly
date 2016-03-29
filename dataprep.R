@@ -110,6 +110,9 @@ allspregindex <- data.table::rbindlist(RegIndex)
 
 setwd('../ohio_butterfly_dataviz')
 
+#reduce size of phenology data
+allspphen <- allspphen %>%
+  filter(Ordinal%%2 == 0)
 saveRDS(allspphen, "phenology.rds")
 
 # Need one df of species by site population size
