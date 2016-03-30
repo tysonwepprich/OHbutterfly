@@ -1,24 +1,24 @@
 notes on dataviz
 
+tab2:
 when new species selected in tab 2, site resets to first alphabetical
-map not removing sites that don't have selected species
-map not highlighting selected location
-clicking on map crashes app, but selected location in input is OK
-  if statement in server line 14 is the culprit of the crash
-  but now clicking on map doesn't update input location
+occupancy legend needed
 occupancy colors too light at most bins, can't see sites
 scales of index and rawcounts off
 
 
-1st tab:
-error message briefly shows when site changes and year no longer matches up with existing data
+tab1:
 
 both tabs:
 how to rename variables for graphs
 help buttons freeze rstudio, always grayed out and loading
+add scientific name to species table so can search by both
 
 new tabs:
 GAM phenology by site/species/year
 
 climate effects with predictions from my models for each species (with uncertainty!)
 slider bars for variable inputs
+
+or x-y plot of landuse vs climate predictive r2 for differnt species
+popup of which seasons important?

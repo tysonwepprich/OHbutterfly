@@ -329,18 +329,44 @@ shinyServer(function(input, output, session){
 ################################################################
   # tab 3: Phenology plots
   
-  # output$species3Output <- renderUI({
-  #   if(is.null(speciesData())){
-  #     return(NULL)
+  output$species3Output <- renderUI({
+    if(is.null(input$location3)){
+      return(NULL)
+    }else{
+      if(input$location3 == ""){
+        return(NULL)
+      }else{
+      selectizeInput("species3", "Common Name of species",
+                     c("", sort(unique(phenology$sp[which(phenology$Description.x == input$location3)]))),
+                     selected = "")
+      }
+    }
+  })
+  
+  get_phen <- reactive({
+    if(is.null(input$species3)){
+      return(NULL)
+    }else{
+      if(input$species3 == ""){
+        return(NULL)
+      }else{
+        phenology %>% filter(Description.x == input$location3,
+                             sp == input$species3)
+      }
+    }
+  })
+  
+  # mapData <- reactive({
+  #   if(is.null(input$species3)){
+  #     sitesonly
   #   }else{
-  #     selectizeInput("species3", "Common Name of species",
-  #                    c("", sort(unique(speciesData()$location))),
-  #                    # selected = "")
-  #                    selected = sort(unique(speciesData()$location))[1])
+  #     if(input$species3 == ""){
+  #       sitesonly
+  #     }else{
+  #       sitesonly %>% filter(CommonName == input$species)
+  #     }
   #   }
   # })
-  
-  
   
   output$Map3 <- renderLeaflet({
     leaflet() %>% addProviderTiles("CartoDB.Positron", options = tileOptions(minZoom = 6, maxZoom = 13)) %>% 
@@ -379,13 +405,13 @@ shinyServer(function(input, output, session){
       }
     }else{
       p2 <- subset(sitesonly, location==input$location3)
-      leafletProxy("Map") %>% 
+      leafletProxy("Map3") %>% 
         setView(lng=p2$lng, lat=p2$lat, input$Map3_zoom) %>%
         addCircleMarkers(p2$lng, p2$lat, radius=10, color="black", fillColor="orange", fillOpacity=1, opacity=1, stroke=TRUE, layerId ="Selected")
     }
     
   })
-  
+
   get_temp <- reactive({
     if(is.null(input$location3)){
       return(NULL)
@@ -410,13 +436,22 @@ shinyServer(function(input, output, session){
     }
   })
   
+  output$graph3phen <- renderPlot({
+    if(is.null(get_phen())){
+      return(NULL)
+    }else{
+        gr3phen <- ggplot(data = get_phen(), aes(x = Day_of_Year, y = Gamma))
+        gr3phen + geom_line(aes(group = Year), color = "gray") + theme(legend.position="none") +
+          stat_summary(geom="smooth", fun.y="mean", color = "red") 
+      }
+  })
   
   output$graph3a <- renderPlot({
     if(is.null(get_temp())){
       return(NULL)
     }else{
-      gr3a <- ggplot(data = get_temp(), aes(x = month, y = Temperature_Anomaly, group = year, color = year))
-      gr3a + geom_line(size = 1) + theme(legend.position="none")
+      gr3a <- ggplot(data = get_temp(), aes(x = month, y = MeanTemperature, group = year, color = year))
+      gr3a + geom_jitter() + theme(legend.position="none")
     }
   })
   
@@ -425,8 +460,8 @@ shinyServer(function(input, output, session){
     if(is.null(get_gdd())){
       return(NULL)
     }else{
-      gr3b <- ggplot(data = get_gdd(), aes(x = Ordinal, y = cumdegday, group = year, color = year))
-      gr3b + geom_line() +  scale_x_discrete(breaks = gdd$MonthN, labels = gdd$Month) + theme(legend.position="none")
+      gr3b <- ggplot(data = get_gdd(), aes(x = Day_of_Year, y = cumdegday, group = year, color = year))
+      gr3b + geom_line() + theme(legend.position="none") + scale_x_date(labels = function(x) format(x, "%d-%b"))
     }
   })
   

@@ -94,8 +94,8 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                                      fluidRow(
                                        # column(6, selectInput("location", "Monitoring Site", c("", sort(sitesonly$location)), selected="", multiple=F)),
                                        column(6, selectInput("location3", "Monitoring Site", sort(sitesonly$location), selected="Penitentiary Glen", multiple=F))
-                                       # ,
-                                       # column(6, uiOutput("species3Output"))
+                                       ,
+                                       column(6, uiOutput("species3Output"))
                                      )
                               )
                             ),
@@ -104,6 +104,9 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                             # bsTooltip("rcp", "Representative Concentration Pathways, covering a range of possible future climates based on atmospheric greenhouse gas concentrations.", "top", options = list(container="body")),
                             fluidRow(
                               column(6, leafletOutput("Map3")),
+                              column(6, plotOutput("graph3phen"))
+                              ),
+                            fluidRow(
                               column(6, plotOutput("graph3a")),
                               column(6, plotOutput("graph3b"))
                               )

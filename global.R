@@ -40,10 +40,7 @@ all.counts <- ann.counts %>%
 siteocc <- readRDS("siteocc.rds")
 
 gdd <- readRDS("gdd.rds")
-gdd$year <- as.character(year(gdd$date))
-
-gdd$MonthN <- as.numeric(format(as.Date(gdd$date),"%m")) # Month's number
-gdd$Month  <- months(as.Date(gdd$date), abbreviate=TRUE) # Month's abbr.
-gdd$Ordinal <- yday(gdd$date)
 
 temperature <- readRDS("monthlyweather.rds")
+
+phenology <- readRDS('phenology.rds')

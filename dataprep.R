@@ -110,9 +110,13 @@ allspregindex <- data.table::rbindlist(RegIndex)
 
 setwd('../ohio_butterfly_dataviz')
 
-#reduce size of phenology data
-allspphen <- allspphen %>%
-  filter(Ordinal%%2 == 0)
+allspphen$date <- as.POSIXct(strptime(paste(allspphen$Year, allspphen$Ordinal, sep = " "), format = "%Y %j"))
+allspphen$fakeyear <- 2000
+allspphen$Day_of_Year <- as.Date(ymd(paste(allspphen$fakeyear, format(allspphen$date, "%m-%d"), sep = "-")))
+allspphen <- allspphen %>% filter(yday(Day_of_Year)%%3 == 0)
+allspphen <- merge(allspphen, sites, by = "SiteID")
+allspphen$Year <- as.character(allspphen$Year)
+
 saveRDS(allspphen, "phenology.rds")
 
 # Need one df of species by site population size
@@ -146,13 +150,13 @@ weather <- weather1 %>%
 weather <- merge(weather, sites, by = "SiteID")
 
 
-# test plot
-plotdat <- weather %>%
-  filter(SiteID == "001") %>%
-  gather(Season, Temperature, prevspr_meanTemp:currsum_meanTemp) %>%
-  filter(Season %in% c("winter_meanTemp", "spring_meanTemp", "currsum_meanTemp"))
-t <- ggplot(data = plotdat, aes(x = Season, y = Temperature, group = Year))
-t + geom_line()
+# # test plot
+# plotdat <- weather %>%
+#   filter(SiteID == "001") %>%
+#   gather(Season, Temperature, prevspr_meanTemp:currsum_meanTemp) %>%
+#   filter(Season %in% c("winter_meanTemp", "spring_meanTemp", "currsum_meanTemp"))
+# t <- ggplot(data = plotdat, aes(x = Season, y = Temperature, group = Year))
+# t + geom_line()
 
 gdd <- gdd %>% data.frame() %>% filter(year >= 1995)
 test <- as.POSIXct(strptime(paste(gdd$year, gdd$yday, sep = " "), format = "%Y %j"))
@@ -176,6 +180,10 @@ gdd <- gdd %>%
   dplyr::select(SiteID, date, cumdegday)
 
 gdd <- merge(gdd, sites, by = "SiteID")
+
+gdd$year <- as.character(year(gdd$date))
+gdd$fakeyear <- 2000
+gdd$Day_of_Year <- as.Date(ymd(paste(gdd$fakeyear, format(gdd$date, "%m-%d"), sep = "-")))
 
 saveRDS(gdd, "gdd.rds")
 saveRDS(monthmeans, "monthlyweather.rds")
