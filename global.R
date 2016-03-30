@@ -40,6 +40,7 @@ all.counts <- ann.counts %>%
 siteocc <- readRDS("siteocc.rds")
 
 gdd <- readRDS("gdd.rds")
+names(gdd)[3] <- "Cumulative_degree_days"
 
 temperature <- readRDS("monthlyweather.rds")
 

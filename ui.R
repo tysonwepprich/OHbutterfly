@@ -52,7 +52,7 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                               column(4, h2("Species annual abundance"), h3("Compare the site and statewide trends")),
                               column(8,
                                      fluidRow(
-                                       column(6, selectizeInput("species", "Common name of species", c("", sort(unique(spec.sites$CommonName))), selected="", multiple=F)),
+                                       column(6, selectInput("species", "Common name of species", c("", sort(unique(spec.sites$CommonName))), selected="", multiple=F)),
                                        column(6, uiOutput("siteOutput"))
                                      )
                               )
@@ -92,20 +92,24 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                               column(4, h2("How does weather affect phenology?"), h3("Select sites and species")),
                               column(8,
                                      fluidRow(
-                                       # column(6, selectInput("location", "Monitoring Site", c("", sort(sitesonly$location)), selected="", multiple=F)),
-                                       column(6, selectInput("location3", "Monitoring Site", sort(sitesonly$location), selected="Penitentiary Glen", multiple=F))
-                                       ,
-                                       column(6, uiOutput("species3Output"))
+                                       # column(6, selectizeInput("species3", "Common name of species", c("", sort(unique(phenology$sp))), selected="", multiple=F)),
+                                       column(6, selectInput("species3", "Common name of species", c("", sort(unique(phenology$sp))), selected ="", multiple=FALSE)),
+                                       
+                                       column(6, uiOutput("siteOutput3")),
+                                       column(6, uiOutput("yearOutput3"))
                                      )
+                                     
                               )
                             ),
+                            br(),
                             # bsTooltip("location", "Enter a community. The menu will filter as you type. You may also select a community using the map.", "top", options = list(container="body")),
                             # bsTooltip("dec", "Select decades for projected climate. A 30-year historical baseline is automatically included in the plot.", "top", options = list(container="body")),
                             # bsTooltip("rcp", "Representative Concentration Pathways, covering a range of possible future climates based on atmospheric greenhouse gas concentrations.", "top", options = list(container="body")),
                             fluidRow(
                               column(6, leafletOutput("Map3")),
                               column(6, plotOutput("graph3phen"))
-                              ),
+                              )
+                            ,
                             fluidRow(
                               column(6, plotOutput("graph3a")),
                               column(6, plotOutput("graph3b"))
@@ -133,6 +137,6 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                             #                 ))
                    ), # close tab 3
                    
-                   tabPanel("about",
-                            source("about.R",local=T)$value)
+                   tabPanel("About",
+                            source("about.R",local=TRUE)$value)
                                             ))

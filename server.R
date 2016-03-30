@@ -60,7 +60,7 @@ shinyServer(function(input, output, session){
     if(is.null(input$location)){
       return(NULL)
     }else{
-      selectizeInput("year", "Years",
+      selectInput("year", "Years",
                      c("ALL", sort(unique(get_df()$Year))),
                      selected = "ALL", multiple = FALSE)
     }
@@ -211,7 +211,7 @@ shinyServer(function(input, output, session){
     if(is.null(speciesData())){
       return(NULL)
     }else{
-    selectizeInput("location2", "Location",
+    selectInput("location2", "Location",
                 c("", sort(unique(speciesData()$location))),
                 # selected = "")
                 selected = sort(unique(speciesData()$location))[1])
@@ -288,16 +288,16 @@ shinyServer(function(input, output, session){
           spec.trend %>%
             filter(CommonName == input$species) %>%
             mutate(IndexValue = exp(CollInd),
-                   Index = "UKBMS_collated") %>%
+                   Index = "Statewide_index") %>%
             arrange(Year)
         }else{
           dat1 <- spec.trend %>%
             filter(CommonName == input$species) %>%
-            mutate(UKBMS_collated = exp(CollInd))
+            mutate(Statewide_index = exp(CollInd))
           
           dat2 <- speciesIndex() %>% 
             filter(location == input$location2) %>%
-            mutate(UKBMS_site = TrpzInd)
+            mutate(Site_index = TrpzInd)
           
           dat3 <- speciesData() %>%
             filter(location == input$location2) %>%
@@ -306,8 +306,8 @@ shinyServer(function(input, output, session){
           dat4 <- merge(dat1, dat2, all.x = TRUE)
           dat5 <- merge(dat4, dat3, by = c("CommonName","Year"), all.x = TRUE, all.y = TRUE)
           dat6 <- dat5 %>%
-            select(CommonName, Year, UKBMS_collated, UKBMS_site, Raw_count) %>%
-            gather(Index, IndexValue, UKBMS_collated:Raw_count)
+            select(CommonName, Year, Raw_count, Site_index, Statewide_index) %>%
+            gather(Index, IndexValue, Raw_count:Statewide_index)
           return(dat6)
         }
       }
@@ -320,7 +320,7 @@ shinyServer(function(input, output, session){
       return(NULL)
     }else{
       gr2a <- ggplot(data = get_plot_data(), aes(x = Year, y = IndexValue, group = Index, color = Index))
-      gr2a + geom_point(size = 5) + facet_wrap( ~ Index, ncol = 1, scales = "free_y") + xlim(1995, 2014) + 
+      gr2a + geom_point(size = 4) + facet_wrap( ~ Index, ncol = 1, scales = "free_y") + xlim(1995, 2014) + 
         expand_limits(x = 1995, y = 0) + theme(legend.position="none")
     }
   })
@@ -328,52 +328,69 @@ shinyServer(function(input, output, session){
   
 ################################################################
   # tab 3: Phenology plots
+
+  # update sites on map to include only where species selected is present
   
-  output$species3Output <- renderUI({
-    if(is.null(input$location3)){
-      return(NULL)
-    }else{
-      if(input$location3 == ""){
-        return(NULL)
-      }else{
-      selectizeInput("species3", "Common Name of species",
-                     c("", sort(unique(phenology$sp[which(phenology$Description.x == input$location3)]))),
-                     selected = "")
-      }
-    }
-  })
-  
-  get_phen <- reactive({
+  mapData3 <- reactive({
     if(is.null(input$species3)){
       return(NULL)
     }else{
       if(input$species3 == ""){
         return(NULL)
       }else{
-        phenology %>% filter(Description.x == input$location3,
-                             sp == input$species3)
+        phenology %>% dplyr::filter(sp == input$species3) %>%
+          group_by(SiteID) %>%
+          mutate(YearsData = length(unique(Year))) %>%
+          ungroup() %>%
+          select(Description.x, lat, lng, YearsData) %>%
+          distinct()
       }
     }
   })
   
-  # mapData <- reactive({
-  #   if(is.null(input$species3)){
-  #     sitesonly
-  #   }else{
-  #     if(input$species3 == ""){
-  #       sitesonly
-  #     }else{
-  #       sitesonly %>% filter(CommonName == input$species)
-  #     }
-  #   }
-  # })
+  output$siteOutput3 <- renderUI({
+    if(is.null(mapData3())){
+      return(NULL)
+    }else{
+      selectInput("location3", "Location",
+                     c("ALL", sort(mapData3()$Description.x)),
+                     selected = "ALL")
+                     # selected = sort(mapData3()$Description.x)[1])
+    }
+  })
   
   output$Map3 <- renderLeaflet({
-    leaflet() %>% addProviderTiles("CartoDB.Positron", options = tileOptions(minZoom = 6, maxZoom = 13)) %>% 
-      setView(lng=-82.7, lat=40.6, zoom=6) %>%
-      addCircleMarkers(data = sitesonly, radius = 10,
-                       color = "navy", stroke=FALSE, fillOpacity=0.5, layerId = sitesonly$location)
+    leaflet() %>% 
+      addProviderTiles("CartoDB.Positron", options = tileOptions(minZoom = 6, maxZoom = 13)) %>% 
+      setView(lng=-82.7, lat=40.6, zoom=6) 
   })
+  
+  output$yearOutput3 <- renderUI({
+    if(is.null(input$location3)){
+      return(NULL)
+    }else{
+      if(input$location3 == "ALL"){
+        yearphen <- unique(phenology$Year[which(phenology$sp == input$species3)])
+      }else{
+        yearphen <- unique(phenology$Year[which(phenology$sp == input$species3 & 
+                                                  phenology$Description.x == input$location3)])
+      }
+      selectInput("year3", "Years", c("ALL", sort(yearphen)),selected = "ALL")
+    }
+  })
+  
+  observe({
+    if(!is.null(mapData3())){
+      binpal <- colorBin("Reds", mapData3()$YearsData, 3, pretty = TRUE)
+      leafletProxy("Map3", data = mapData3()) %>%
+        removeMarker(layerId = sitesonly$location) %>%
+        addCircleMarkers(radius = ~10, color = "black",
+                         fillColor = ~binpal(YearsData),
+                         stroke=TRUE, fillOpacity=.6, opacity = .5, 
+                         layerId = mapData3()$Description.x)
+    }
+  })
+  
   
   # highlights selected marker
   observeEvent(input$Map3_marker_click, {
@@ -383,6 +400,8 @@ shinyServer(function(input, output, session){
       addCircleMarkers(p$lng, p$lat, radius=10, color="black", fillColor="orange", fillOpacity=1, opacity=1, stroke=TRUE, layerId ="Selected")
     
   })
+  
+  
   
   # updates location bar with clicked site
   observeEvent(input$Map3_marker_click, {
@@ -397,14 +416,14 @@ shinyServer(function(input, output, session){
   observeEvent(input$location3, {
     if(!is.null(input$Map3_marker_click)){
       p <- input$Map3_marker_click
-      p2 <- subset(sitesonly, location==input$location3)
+      p2 <- subset(mapData3(), Description.x == input$location3)
       if(input$location3 != p$id){
         leafletProxy("Map3") %>% 
           setView(lng=p2$lng, lat=p2$lat, input$Map3_zoom) %>%
           addCircleMarkers(p2$lng, p2$lat, radius=10, color="black", fillColor="orange", fillOpacity=1, opacity=1, stroke=TRUE, layerId ="Selected")
       }
     }else{
-      p2 <- subset(sitesonly, location==input$location3)
+      p2 <- subset(mapData3(), Description.x == input$location3)
       leafletProxy("Map3") %>% 
         setView(lng=p2$lng, lat=p2$lat, input$Map3_zoom) %>%
         addCircleMarkers(p2$lng, p2$lat, radius=10, color="black", fillColor="orange", fillOpacity=1, opacity=1, stroke=TRUE, layerId ="Selected")
@@ -412,59 +431,256 @@ shinyServer(function(input, output, session){
     
   })
 
-  get_temp <- reactive({
-    if(is.null(input$location3)){
+  
+  get_phen_spec <- reactive({
+    if(is.null(input$species3)){
       return(NULL)
     }else{
-      if(input$location3 == ""){
+      if(input$species3 == ""){
         return(NULL)
       }else{
-        temperature[which(temperature$Description.x == input$location3), ]
+        phenology %>% filter(sp == input$species3) %>%
+          mutate(SiteYear = paste(SiteID, Year, sep = "_"))
       }
     }
   })
   
-  get_gdd <- reactive({
+  get_phen_site <- reactive({
     if(is.null(input$location3)){
       return(NULL)
     }else{
-      if(input$location3 == ""){
+      if(input$location3 == "ALL"){
         return(NULL)
       }else{
-          gdd[which(gdd$Description.x == input$location3), ]
+        get_phen_spec() %>% filter(Description.x == input$location3)
       }
     }
   })
+  
+  get_phen_year <- reactive({
+    if(is.null(input$year3)){
+      return(NULL)
+    }else{
+      if(input$year3 != "ALL" & input$location3 == "ALL"){
+        get_phen_spec() %>% filter(Year == input$year3)
+      }else{
+        if(input$year3 == "ALL" & input$location3 == "ALL"){
+          return(NULL)
+        }else{
+          if(input$year3 != "ALL" & input$location3 != "ALL"){
+            get_phen_site() %>% filter(Year == input$year3)
+          }else{
+            if(input$year3 == "ALL" & input$location3 != "ALL"){
+              return(NULL)
+            }
+          }
+        }
+      }
+    }
+  })
+  
+  get_temp_spec <- reactive({
+    if(is.null(mapData3())){
+      return(NULL)
+    }else{
+    out <- temperature[which(temperature$Description.x %in% mapData3()$Description.x), ]
+    out$SiteYear <-  paste(out$SiteID, out$year, sep = "_")
+    return(out)
+    }
+  })
+
+  get_temp_site <- reactive({
+
+      if(input$location3 == "ALL"){
+        return(NULL)
+      }else{
+        get_temp_spec() %>% dplyr::filter(Description.x == input$location3)
+      }
+
+  })
+  
+  get_temp_year <- reactive({
+
+      if(input$year3 != "ALL" & input$location3 == "ALL"){
+        get_temp_spec() %>% dplyr::filter(year == input$year3)
+      }else{
+        if(input$year3 == "ALL" & input$location3 == "ALL"){
+          return(NULL)
+        }else{
+          if(input$year3 != "ALL" & input$location3 != "ALL"){
+            get_temp_site() %>% dplyr::filter(year == input$year3)
+          }else{
+            if(input$year3 == "ALL" & input$location3 != "ALL"){
+              return(NULL)
+            }
+          }
+        }
+      }
+    
+  })
+  
+  
+  get_gdd_spec <- reactive({
+    if(is.null(mapData3())){
+      return(NULL)
+    }else{
+    out <- gdd[which(gdd$Description.x %in% mapData3()$Description.x), ]
+    out$SiteYear <-  paste(out$SiteID, out$year, sep = "_")
+    return(out)
+    }
+  })
+  
+  get_gdd_site <- reactive({
+    if(is.null(input$location3)){
+      return(NULL)
+    }else{
+      if(input$location3 == "ALL"){
+        return(NULL)
+      }else{
+        get_gdd_spec() %>% dplyr::filter(Description.x == input$location3)
+      }
+    }
+  })
+  
+  get_gdd_year <- reactive({
+    if(is.null(input$year3)){
+      return(NULL)
+    }else{
+      if(input$year3 != "ALL" & input$location3 == "ALL"){
+        get_gdd_spec() %>% dplyr::filter(year == input$year3)
+      }else{
+        if(input$year3 == "ALL" & input$location3 == "ALL"){
+          return(NULL)
+        }else{
+          if(input$year3 != "ALL" & input$location3 != "ALL"){
+            get_gdd_site() %>% dplyr::filter(year == input$year3)
+          }else{
+            if(input$year3 == "ALL" & input$location3 != "ALL"){
+              return(NULL)
+            }
+          }
+        }
+      }
+    }
+  })
+  
   
   output$graph3phen <- renderPlot({
-    if(is.null(get_phen())){
+    if(is.null(get_phen_spec())){
       return(NULL)
     }else{
-        gr3phen <- ggplot(data = get_phen(), aes(x = Day_of_Year, y = Gamma))
-        gr3phen + geom_line(aes(group = Year), color = "gray") + theme(legend.position="none") +
-          stat_summary(geom="smooth", fun.y="mean", color = "red") 
+        
+        if(input$location3 == "ALL" & input$year3 == "ALL"){
+          gr3phen <- ggplot(data = get_phen_spec(), aes(x = Day_of_Year, y = Gamma)) + theme_bw()
+          gr3phen + geom_line(aes(group = SiteYear), color = "#a6bddb") +
+            stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe")
+        }else{
+          if(input$location3 == "ALL" & input$year3 != "ALL"){
+            gr3phen <- ggplot(data = get_phen_spec(), aes(x = Day_of_Year, y = Gamma)) + theme_bw()
+            gr3phen + geom_line(aes(group = SiteYear), color = "#a6bddb") +
+              stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe") +
+              geom_line(data = get_phen_year(), aes(group = Description.x), color = "#fa9fb5", size = 1.2) +
+              stat_summary(data = get_phen_year(), geom = "smooth", fun.y = "mean", color = "#c51b8a", size = 1.75)
+            
+          }else{
+            if(input$location3 != "ALL" & input$year3 == "ALL"){
+              gr3phen <- ggplot(data = get_phen_spec(), aes(x = Day_of_Year, y = Gamma)) + theme_bw()
+              gr3phen + geom_line(aes(group = SiteYear), color = "#a6bddb") +
+                stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe") +
+                geom_line(data = get_phen_site(), aes(group = Year), color = "#fec44f", size = 1.2) +
+                stat_summary(data = get_phen_site(), geom = "smooth", fun.y = "mean", color = "#d95f0e", size = 1.5) 
+              
+            }else{
+              gr3phen <- ggplot(data = get_phen_spec(), aes(x = Day_of_Year, y = Gamma)) + theme_bw()
+              gr3phen + geom_line(aes(group = SiteYear), color = "#a6bddb") +
+                stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe") +
+                geom_line(data = get_phen_site(), aes(group = Year), color = "#fec44f", size = 1.2) +
+                stat_summary(data = get_phen_site(), geom = "smooth", fun.y = "mean", color = "#d95f0e", size = 1.2) +
+                geom_line(data = get_phen_year(), color = "#c51b8a", size = 1.75)
+            }
+          }
+        }
       }
-  })
-  
+    })
+
   output$graph3a <- renderPlot({
-    if(is.null(get_temp())){
+
+    if(is.null(get_temp_spec())){
       return(NULL)
-    }else{
-      gr3a <- ggplot(data = get_temp(), aes(x = month, y = MeanTemperature, group = year, color = year))
-      gr3a + geom_jitter() + theme(legend.position="none")
+      }else{
+      if(input$location3 == "ALL" & input$year3 == "ALL"){
+        gr3a <- ggplot(data = get_temp_spec(), aes(x = month, y = MeanTemperature)) + theme_bw()
+        gr3a + geom_jitter(alpha = 0.3, color = "#a6bddb") +
+          stat_summary(aes(group = month), fun.y = "mean", color = "#2b8cbe", geom = "point", size = 3)
+      }else{
+        if(input$location3 == "ALL" & input$year3 != "ALL"){
+          gr3a <- ggplot(data = get_temp_spec(), aes(x = month, y = MeanTemperature)) + theme_bw()
+          gr3a + geom_jitter(alpha = 0.3, color = "#a6bddb") +
+            stat_summary(aes(group = month), fun.y = "mean",  color = "#2b8cbe", geom = "point", size = 1) +
+            geom_jitter(data = get_temp_year(), alpha = 0.9, color = "#fa9fb5", size = 3) +
+            stat_summary(data = get_temp_year(), aes(group = month), fun.y = "median", color = "#c51b8a", geom = "point", size = 4)
+
+        }else{
+          if(input$location3 != "ALL" & input$year3 == "ALL"){
+            gr3a <- ggplot(data = get_temp_spec(), aes(x = month, y = MeanTemperature)) + theme_bw()
+            gr3a + geom_jitter(alpha = 0.3, color = "#a6bddb") +
+              stat_summary(aes(group = month), fun.y = "mean",  color = "#2b8cbe",geom = "point", size = 1) +
+              geom_jitter(data = get_temp_site(), alpha = 0.9, color = "#fec44f", size = 3) +
+              stat_summary(data = get_temp_site(), aes(group = month), fun.y = "median", color = "#d95f0e", geom = "point", size = 4)
+
+          }else{
+            gr3a <- ggplot(data = get_temp_spec(), aes(x = month, y = MeanTemperature)) + theme_bw()
+            gr3a + geom_jitter(alpha = 0.3, color = "#a6bddb") +
+              stat_summary(aes(group = month), fun.y = "mean",  color = "#2b8cbe",geom = "point", size = 1) +
+              geom_jitter(data = get_temp_site(), alpha = 0.9, color = "#fec44f", size = 3) +
+              stat_summary(data = get_temp_site(), aes(group = month), fun.y = "median", color = "#d95f0e", geom = "point", size = 3) +
+              geom_jitter(data = get_temp_year(), aes(group = month), color = "#c51b8a", size = 5)
+        }
+      }
+    }
     }
   })
   
-  
+  #gdd
   output$graph3b <- renderPlot({
-    if(is.null(get_gdd())){
+    if(is.null(get_gdd_spec())){
       return(NULL)
     }else{
-      gr3b <- ggplot(data = get_gdd(), aes(x = Day_of_Year, y = cumdegday, group = year, color = year))
-      gr3b + geom_line() + theme(legend.position="none") + scale_x_date(labels = function(x) format(x, "%d-%b"))
+    #   if(is.null(input$location3) | is.null(input$year3)){
+    #     return(NULL)
+    #   }else{
+        if(input$location3 == "ALL" & input$year3 == "ALL"){
+          gr3b <- ggplot(data = get_gdd_spec(), aes(x = Day_of_Year, y = Cumulative_degree_days)) + theme_bw()
+          gr3b + geom_line(aes(group = SiteYear), color = "#a6bddb") +
+            stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe")
+        }else{
+          if(input$location3 == "ALL" & input$year3 != "ALL"){
+            gr3b <- ggplot(data = get_gdd_spec(), aes(x = Day_of_Year, y = Cumulative_degree_days)) + theme_bw()
+            gr3b + geom_line(aes(group = SiteYear), color = "#a6bddb") +
+              stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe") + 
+              geom_line(data = get_gdd_year(), aes(group = Description.x), color = "#fa9fb5", size = 1.2) +
+              stat_summary(data = get_gdd_year(), geom = "smooth", fun.y = "mean", color = "#c51b8a", size = 1.75)
+            
+          }else{
+            if(input$location3 != "ALL" & input$year3 == "ALL"){
+              gr3b <- ggplot(data = get_gdd_spec(), aes(x = Day_of_Year, y = Cumulative_degree_days)) + theme_bw()
+              gr3b + geom_line(aes(group = SiteYear), color = "#a6bddb") +
+                stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe") + 
+                geom_line(data = get_gdd_site(), aes(group = year), color = "#fec44f", size = 1.2) +
+                stat_summary(data = get_gdd_site(), geom = "smooth", fun.y = "mean", color = "#d95f0e", size = 1.75) 
+              
+            }else{
+              gr3b <- ggplot(data = get_gdd_spec(), aes(x = Day_of_Year, y = Cumulative_degree_days)) + theme_bw()
+              gr3b + geom_line(aes(group = SiteYear), color = "#a6bddb") +
+                stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe") + 
+                geom_line(data = get_gdd_site(), aes(group = year), color = "#fec44f") +
+                stat_summary(data = get_gdd_site(), geom = "smooth", fun.y = "mean", color = "#d95f0e") +
+                geom_line(data = get_gdd_year(), color = "#c51b8a", size = 1.75)
+            }
+          }
+        }
+    #   }
     }
   })
-  
-  
   
 })

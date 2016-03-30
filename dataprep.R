@@ -114,7 +114,13 @@ allspphen$date <- as.POSIXct(strptime(paste(allspphen$Year, allspphen$Ordinal, s
 allspphen$fakeyear <- 2000
 allspphen$Day_of_Year <- as.Date(ymd(paste(allspphen$fakeyear, format(allspphen$date, "%m-%d"), sep = "-")))
 allspphen <- allspphen %>% filter(yday(Day_of_Year)%%3 == 0)
-allspphen <- merge(allspphen, sites, by = "SiteID")
+allspphen$SiteID <- as.character(allspphen$SiteID)
+# jittering sites means lat/lon don't match
+test <- merge(allspphen, sites, by = c("SiteID"))
+test <- test %>%
+  mutate(lat = lat.y, lng = lon.y) %>%
+  select(-lat.x, -lon.x, -lat.y, -lon)
+allspphen <- test
 allspphen$Year <- as.character(allspphen$Year)
 
 saveRDS(allspphen, "phenology.rds")
@@ -184,6 +190,9 @@ gdd <- merge(gdd, sites, by = "SiteID")
 gdd$year <- as.character(year(gdd$date))
 gdd$fakeyear <- 2000
 gdd$Day_of_Year <- as.Date(ymd(paste(gdd$fakeyear, format(gdd$date, "%m-%d"), sep = "-")))
+
+gdd<- gdd %>% filter(yday(Day_of_Year)%%3 == 0)
+
 
 saveRDS(gdd, "gdd.rds")
 saveRDS(monthmeans, "monthlyweather.rds")
