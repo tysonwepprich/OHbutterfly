@@ -2,12 +2,15 @@ library(shiny)
 library(shinythemes)
 library(shinyBS)
 library(DT)
+library(data.table)
+library(lubridate)
 library(leaflet)
 library(plyr)
 library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(scales)
+library(broom)
 # lapply(list.files(pattern="^cc4lite_launch_.*.\\.RData$"), load, envir=.GlobalEnv)
 # caption <- 'Due to inter-annual variability and model uncertainty, these graphs are useful for examining a range of projected trends, but not for precise prediction. For more information regarding climate projections, please visit'
 # dec.lab <- paste0(seq(2010, 2090, by=10), "s")
@@ -28,6 +31,14 @@ sitesonly <- sites2map %>%
 
 spec.sites <- readRDS("spec.site.rds")
 spec.sites$Year <- as.numeric(as.character(spec.sites$Year))
+siteocc <- spec.sites %>%
+  select(SiteID, CommonName, Year, TrpzInd, location, lat, lng) %>%
+  group_by(SiteID, CommonName) %>%
+  mutate(NumPosYears = length(which(TrpzInd > 0))) %>%
+  filter(NumPosYears > 0) %>%
+  distinct()
+
+
 spec.trend <- readRDS("spec.trend.rds")
 
 ann.counts <- readRDS("annualcounts.rds")
@@ -37,7 +48,7 @@ all.counts <- ann.counts %>%
   summarise(GrandTotal = sum(TotalCount)) %>%
   data.frame()
 
-siteocc <- readRDS("siteocc.rds")
+# siteocc <- readRDS("siteocc.rds")
 
 gdd <- readRDS("gdd.rds")
 names(gdd)[3] <- "Cumulative_degree_days"

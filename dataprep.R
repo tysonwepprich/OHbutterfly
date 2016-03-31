@@ -45,7 +45,8 @@ for (i in 1:nrow(SpeciesList)){
   test$Total <- plyr::mapvalues(test[, "Total"], from = NA, to = 0)
   test2 <- test %>%
     group_by(SiteID) %>%
-    mutate(Occupancy = length(which(Total > 0))/length(Total)) %>%
+    mutate(Occupancy = length(which(Total > 0))/length(Total),
+           NumPosCounts = length(which(Total > 0))) %>%
     ungroup()
   out <- test2 %>%
     group_by(Year) %>%
@@ -75,7 +76,7 @@ saveRDS(counts, "annualcounts.rds")
 
 # occupancy from rawcounts for each species x site
 siteocc <- rawcounts %>%
-  select(CommonName, Occupancy, Description.x, lat, lon) %>%
+  select(CommonName, Occupancy, NumPosCounts, Description.x, lat, lon) %>%
   distinct()
 
 saveRDS(siteocc, "siteocc.rds")

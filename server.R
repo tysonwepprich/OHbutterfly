@@ -60,7 +60,7 @@ shinyServer(function(input, output, session){
     if(is.null(input$location)){
       return(NULL)
     }else{
-      selectInput("year", "Years",
+      selectInput("year", "2. Select year",
                      c("ALL", sort(unique(get_df()$Year))),
                      selected = "ALL", multiple = FALSE)
     }
@@ -88,11 +88,15 @@ shinyServer(function(input, output, session){
           filter(location == input$location) %>%
           select(CommonName, GrandTotal) %>%
           arrange(-GrandTotal)
+        names(ret) <- c("Species common name", paste("Total over all years at", input$location, sep = " "))
+        
       }else{
         ret <- ann.counts %>% 
           filter(location == input$location, Year == input$year) %>%
           select(CommonName, TotalCount) %>%
           arrange(-TotalCount)
+        names(ret) <- c("Species common name", paste("Total over all weeks in", input$year, sep = " "))
+        
       }
       return(ret)
     }
@@ -109,20 +113,32 @@ shinyServer(function(input, output, session){
             slice(1L) %>%
             select(value)
           nyears <- length(unique(d2_yr()$Year))
-          grtitle <- paste(grandrich, "species observed over", nyears, "years", sep = " ")
+          grtitle <- paste(grandrich, "unique species observed over", nyears, "years", sep = " ")
           richness <- d2_yr() %>% filter(variable == "year.richness")
           gr1a <- ggplot(data = richness, aes(x = Year, y = value)) 
-          gr1a + geom_point() + xlim(1995, 2014) + ylim(0, max(richness$value)) + ggtitle(grtitle)
+          gr1a + geom_point(size = 5, color = "navy") + xlim(1995, 2014) + ylim(0, max(richness$value)) + ggtitle(grtitle) + 
+            ylab("Number of species") + xlab("Monitoring year") + 
+            theme_bw() + theme(axis.title.x = element_text(size=20),
+                  axis.text.x  = element_text(size=16),
+                  axis.title.y = element_text(size=20),
+                  axis.text.y  = element_text(size=16),
+                  plot.title = element_text(size = 20, face="bold"))
         }else{
           yrrich <- d2_yr() %>%
             filter(variable == "year.richness") %>%
             slice(1L) %>%
             select(value)
           nweeks <- length(unique(d2_yr()$Week))
-          grtitle <- paste(yrrich, "species observed over", nweeks, "weeks", sep = " ")
+          grtitle <- paste(yrrich, "unique species observed over", nweeks, "weeks", sep = " ")
           richness <- d2_yr() %>% filter(variable == "surv.richness")
           gr1a <- ggplot(data = richness, aes(x = Week, y = value))
-          gr1a + geom_point() + xlim(1, 31) + ylim(0, max(richness$value)) + ggtitle(grtitle)
+          gr1a + geom_point(size = 5, color = "navy") + xlim(1, 31) + ylim(0, max(richness$value)) + ggtitle(grtitle) +
+            ylab("Number of species") + xlab("Monitoring week") + 
+            theme_bw() + theme(axis.title.x = element_text(size=20),
+                     axis.text.x  = element_text(size=16),
+                     axis.title.y = element_text(size=20),
+                     axis.text.y  = element_text(size=16),
+                     plot.title = element_text(size = 20, face="bold"))
         }
       }
   })
@@ -138,20 +154,32 @@ shinyServer(function(input, output, session){
             slice(1L) %>%
             select(value)
           nyears <- length(unique(d2_yr()$Year))
-          grtitle <- paste(grandtotal, "butterflies observed over", nyears, "years", sep = " ")
+          grtitle <- paste(grandtotal, "individual butterflies counted over", nyears, "years", sep = " ")
           total <- d2_yr() %>% filter(variable == "year.total.counted")
           gr1b <- ggplot(data = total, aes(x = Year, y = value))
-          gr1b + geom_point() + xlim(1995, 2014) + ylim(0, max(total$value)) + ggtitle(grtitle)
+          gr1b + geom_point(size = 5, color = "navy") + xlim(1995, 2014) + ylim(0, max(total$value)) + ggtitle(grtitle) + 
+            ylab("Total number counted") + xlab("Monitoring year") + 
+            theme_bw() + theme(axis.title.x = element_text(size=20),
+                     axis.text.x  = element_text(size=16),
+                     axis.title.y = element_text(size=20),
+                     axis.text.y  = element_text(size=16),
+                     plot.title = element_text(size = 20, face="bold"))
         }else{
           yrtotal <- d2_yr() %>% 
             filter(variable == "year.total.counted") %>%
             slice(1L) %>%
             select(value)
           nweeks <- length(unique(d2_yr()$Week))
-          grtitle <- paste(yrtotal, "butterflies observed over", nweeks, "weeks", sep = " ")
+          grtitle <- paste(yrtotal, "individual butterflies counted over", nweeks, "weeks", sep = " ")
           total <- d2_yr() %>% filter(variable == "surv.total.counted")
           gr1b <- ggplot(data = total, aes(x = Week, y = value)) 
-          gr1b + geom_point() + xlim(1, 31) + ylim(0, max(total$value)) + ggtitle(grtitle)
+          gr1b + geom_point(size = 5, color = "navy") + xlim(1, 31) + ylim(0, max(total$value)) + ggtitle(grtitle) +
+            ylab("Total number counted") + xlab("Monitoring week") + 
+            theme_bw() + theme(axis.title.x = element_text(size=20),
+                     axis.text.x  = element_text(size=16),
+                     axis.title.y = element_text(size=20),
+                     axis.text.y  = element_text(size=16),
+                     plot.title = element_text(size = 20, face="bold"))
         }
       }
   })
@@ -161,27 +189,13 @@ shinyServer(function(input, output, session){
   # })
   # 
   output$table <- DT::renderDataTable({
-    d3_spec.yr()
+    DT::datatable(d3_spec.yr(), selection = "none")
   })
   
   #####################################
   # TAB 2
   ##################################
   
-
-  # update sites on map to include only where species selected is present
-
-  speciesData <- reactive({
-    if(is.null(input$species)){
-      return(NULL)
-    }else{
-      if(input$species == ""){
-        return(NULL)
-      }else{
-      ann.counts %>% filter(CommonName == input$species)
-      }
-    }
-  })
   
   speciesIndex <- reactive({
     if(is.null(input$species)){
@@ -202,19 +216,19 @@ shinyServer(function(input, output, session){
       if(input$species == ""){
         return(NULL)
       }else{
-      siteocc %>% filter(CommonName == input$species)
+      siteocc %>% dplyr::filter(CommonName == input$species)
       }
     }
   })
   
   output$siteOutput <- renderUI({
-    if(is.null(speciesData())){
+    if(is.null(mapData())){
       return(NULL)
     }else{
-    selectInput("location2", "Location",
-                c("", sort(unique(speciesData()$location))),
-                # selected = "")
-                selected = sort(unique(speciesData()$location))[1])
+    selectInput("location2", "2. Select monitoring site here or on map",
+                c(sort(unique(mapData()$location))),
+                # selected = "ALL")
+                selected = sort(unique(mapData()$location))[1])
     }
   })
   
@@ -227,13 +241,13 @@ shinyServer(function(input, output, session){
   
   observe({
     if(!is.null(mapData())){
-      binpal <- colorBin("Reds", mapData()$Occupancy, 3, pretty = TRUE)
+      binpal <- colorBin("Reds", mapData()$NumPosYears, 3, pretty = TRUE)
       leafletProxy("Map2", data = mapData()) %>%
         removeMarker(layerId = sitesonly$location) %>%
         addCircleMarkers(radius = ~10, color = "black",
-                         fillColor = ~binpal(Occupancy),
+                         fillColor = ~binpal(NumPosYears),
                          stroke=TRUE, fillOpacity=.6, opacity = .5, 
-                         layerId = mapData()$Description.x)
+                         layerId = mapData()$location)
     }
   })
   
@@ -284,30 +298,28 @@ shinyServer(function(input, output, session){
       if(input$species == ""){
         return(NULL)
       }else{
-        if(is.null(input$location2)){
+        if(input$location2 == "ALL"){
           spec.trend %>%
             filter(CommonName == input$species) %>%
-            mutate(IndexValue = exp(CollInd),
+            mutate(IndexValue = CollInd,
                    Index = "Statewide_index") %>%
+            mutate(zeroYear = ifelse(IndexValue == 0, TRUE, FALSE)) %>%
             arrange(Year)
         }else{
           dat1 <- spec.trend %>%
             filter(CommonName == input$species) %>%
-            mutate(Statewide_index = exp(CollInd))
+            mutate(Statewide_index = CollInd)
           
           dat2 <- speciesIndex() %>% 
             filter(location == input$location2) %>%
             mutate(Site_index = TrpzInd)
           
-          dat3 <- speciesData() %>%
-            filter(location == input$location2) %>%
-            mutate(Raw_count = TotalCount)
-          
-          dat4 <- merge(dat1, dat2, all.x = TRUE)
-          dat5 <- merge(dat4, dat3, by = c("CommonName","Year"), all.x = TRUE, all.y = TRUE)
+          dat5 <- merge(dat1, dat2, all.x = TRUE)
+          # dat5 <- merge(dat4, dat3, by = c("CommonName","Year"), all.x = TRUE, all.y = TRUE)
           dat6 <- dat5 %>%
-            select(CommonName, Year, Raw_count, Site_index, Statewide_index) %>%
-            gather(Index, IndexValue, Raw_count:Statewide_index)
+            select(CommonName, Year, Site_index, Statewide_index) %>%
+            gather(Index, IndexValue, Site_index:Statewide_index)
+          dat6 <- dat6 %>%  mutate(zeroYear = ifelse(IndexValue == 0, TRUE, FALSE))
           return(dat6)
         }
       }
@@ -319,9 +331,27 @@ shinyServer(function(input, output, session){
     if(is.null(get_plot_data())){
       return(NULL)
     }else{
-      gr2a <- ggplot(data = get_plot_data(), aes(x = Year, y = IndexValue, group = Index, color = Index))
-      gr2a + geom_point(size = 4) + facet_wrap( ~ Index, ncol = 1, scales = "free_y") + xlim(1995, 2014) + 
-        expand_limits(x = 1995, y = 0) + theme(legend.position="none")
+      # split zeros from data
+      # datzero <- get_plot_data() %>% dplyr::filter(zeroYear == TRUE)
+      # if(nrow(datzero) == 0) datzero <- data.frame(Year = 2005, zeroYear = NA, Index = "Site_index")
+      datplus <- get_plot_data() %>% dplyr::filter(zeroYear == FALSE)
+      
+      gr2a <- ggplot(data = datplus, aes(x = Year, y = IndexValue, group = Index, color = Index))
+      gr2a + stat_smooth(method = "lm") + 
+        geom_point(size = 4) + facet_wrap( ~ Index, ncol = 1, scales = "free_y") + xlim(1995, 2014) + 
+        expand_limits(x = 1995, y = 0) + 
+        theme_bw() +
+        xlab("Year monitored") + ylab("Population index (different scales)") +
+        ggtitle("Site and statewide abundance indices\n to compare relative trends") +
+        theme(legend.position="none",
+              strip.text.x = element_text(size=16),
+              axis.title.x = element_text(size=20),
+              axis.text.x  = element_text(size=16),
+              axis.title.y = element_text(size=20),
+              axis.text.y  = element_text(size=16),
+              plot.title = element_text(size = 20, face="bold")) 
+        # scale_shape_identity() +
+        # geom_point(data = datzero, aes(x = Year, y = zeroYear), shape = 4, size = 4)
     }
   })
   
