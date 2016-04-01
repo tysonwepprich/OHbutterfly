@@ -12,7 +12,7 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                                       )
                                     ),
                                     fluidRow(
-                                      column(12, h3("Explore the different species and total number of butterflies counted at each site and year. Navigate to other tabs at the top of the screen to see trends in abundance and phenology."))
+                                      column(12, h4("Explore the different species and total number of butterflies counted at each site and year. Navigate to other tabs at the top of the screen to see trends in abundance and phenology."))
                                     ),
                                     # bsTooltip("location", "Enter a community. The menu will filter as you type. You may also select a community using the map.", "top", options = list(container="body")),
                                     # bsTooltip("dec", "Select decades for projected climate. A 30-year historical baseline is automatically included in the plot.", "top", options = list(container="body")),
@@ -61,7 +61,7 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                               )
                             ),
                             fluidRow(
-                              column(12, h3("The map shows sites where the species is found, with darker colors at sites with more counts. The abundance trends over time are based on volunteer counts and modeled with methods similar to those used by the UK Butterfly Monitoring Scheme (see More Information)."))
+                              column(12, h4("The map shows sites where the species is found, with darker colors at sites with more annual counts. The abundance trends over time are based on volunteer counts and modeled with methods similar to those used by the UK Butterfly Monitoring Scheme (see More Information)."))
                             ),
                             # bsTooltip("location", "Enter a community. The menu will filter as you type. You may also select a community using the map.", "top", options = list(container="body")),
                             # bsTooltip("dec", "Select decades for projected climate. A 30-year historical baseline is automatically included in the plot.", "top", options = list(container="body")),
@@ -93,10 +93,14 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                             #         ))
                                     ), # close tab 2
                    tabPanel("Phenology and weather",
+                            tags$style(type='text/css', '#text3a {background-color: #ffffff; color: #2b8cbe;}'), 
+                            tags$style(type='text/css', '#text3b {background-color: #ffffff; color: #d95f0e;}'), 
+                            tags$style(type='text/css', '#text3c {background-color: #ffffff; color: #c51b8a;}'), 
+                            
                             
                             fluidRow(
-                              column(6, h2("Phenology and weather"), h3("See how annual temperature influences the phenology patterns of different species")),
-                              column(6,
+                              column(4, h2("Phenology and weather")),
+                              column(8,
                                      fluidRow(
                                        # column(6, selectizeInput("species3", "Common name of species", c("", sort(unique(phenology$sp))), selected="", multiple=F)),
                                        column(6, selectInput("species3", "1. Select the species", c("", sort(unique(phenology$sp))), selected ="", multiple=FALSE)),
@@ -107,7 +111,18 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                                      
                               )
                             ),
-                            br(),
+                            fluidRow(
+                              column(12, h3("These plots show how phenology changes with variation in temperature. The map shows sites with darker colors indicating more years of phenology data. The other plots show statewide phenology and weather. The darker lines and dots show the average phenology and weather for the state, site, or year."))
+                            ),
+                            fluidRow(
+                              column(12, verbatimTextOutput("text3a"))
+                            ),
+                            fluidRow(
+                              column(12, verbatimTextOutput("text3b"))
+                            ),
+                            fluidRow(
+                              column(12, verbatimTextOutput("text3c"))
+                            ),
                             # bsTooltip("location", "Enter a community. The menu will filter as you type. You may also select a community using the map.", "top", options = list(container="body")),
                             # bsTooltip("dec", "Select decades for projected climate. A 30-year historical baseline is automatically included in the plot.", "top", options = list(container="body")),
                             # bsTooltip("rcp", "Representative Concentration Pathways, covering a range of possible future climates based on atmospheric greenhouse gas concentrations.", "top", options = list(container="body")),
@@ -116,6 +131,7 @@ shinyUI(navbarPage(title = "Ohio Lepidopterists Long-term Butterfly Monitoring",
                               column(6, plotOutput("graph3phen"))
                               )
                             ,
+                            br(),
                             fluidRow(
                               column(6, plotOutput("graph3a")),
                               column(6, plotOutput("graph3b"))

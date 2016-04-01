@@ -7,6 +7,7 @@ library(lubridate)
 library(plyr)
 library(dplyr)
 library(tidyr)
+library(broom)
 
 raw <- read_csv(file = "C:/Users/Tyson/Desktop/Box Sync/Ohio/data2012/data.trim.csv")[,-1]
 raw <- raw %>% mutate(SiteID = formatC(SiteID.x, width = 3, format = "d", flag = "0"),
@@ -140,6 +141,21 @@ spec.trend <- as.data.frame(allspregindex)
 spec.trend <- spec.trend[spec.trend$Region == "ALL", ]
 names(spec.trend)[1] <- "CommonName"
 saveRDS(spec.trend, "spec.trend.rds")
+###########################################################
+#get linear trends of statewide collated index
+trends <- readRDS("spec.trend.rds")
+
+
+mods <-  trends %>% group_by(CommonName) %>%
+  do(fits = lm(CollInd ~ Year, data = .))
+modsCoef = tidy(mods, fits)
+modsYear <- modsCoef %>% filter(term == "Year")
+
+modsYear %>% data.frame() %>% filter(p.value >= .1) %>% select(CommonName)
+modsYear %>% data.frame() %>% filter(
+                                     p.value < 0.05,
+                                     estimate < 0) %>% select(CommonName, estimate)
+
 
 ############################################################
 # Weather and phenology at sites/statewide

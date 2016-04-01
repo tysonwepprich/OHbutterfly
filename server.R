@@ -382,9 +382,9 @@ shinyServer(function(input, output, session){
     if(is.null(mapData3())){
       return(NULL)
     }else{
-      selectInput("location3", "Location",
-                     c("ALL", sort(mapData3()$Description.x)),
-                     selected = "ALL")
+      selectInput("location3", "2. Select site here or on map",
+                     c("ALL", sort(mapData3()$Description.x)))
+                     # selected = "ALL")
                      # selected = sort(mapData3()$Description.x)[1])
     }
   })
@@ -405,7 +405,7 @@ shinyServer(function(input, output, session){
         yearphen <- unique(phenology$Year[which(phenology$sp == input$species3 & 
                                                   phenology$Description.x == input$location3)])
       }
-      selectInput("year3", "Years", c("ALL", sort(yearphen)),selected = "ALL")
+      selectInput("year3", "3. Select year", c("ALL", sort(yearphen)),selected = "ALL")
     }
   })
   
@@ -446,19 +446,26 @@ shinyServer(function(input, output, session){
   observeEvent(input$location3, {
     if(!is.null(input$Map3_marker_click)){
       p <- input$Map3_marker_click
-      p2 <- subset(mapData3(), Description.x == input$location3)
-      if(input$location3 != p$id){
+      if(input$location3 == "ALL"){
+        leafletProxy("Map3") %>% removeMarker(layerId = "Selected")
+      }else{
+        p2 <- subset(mapData3(), Description.x == input$location3)
+        if(input$location3 != p$id){
+          leafletProxy("Map3") %>% 
+            setView(lng=p2$lng, lat=p2$lat, input$Map3_zoom) %>%
+            addCircleMarkers(p2$lng, p2$lat, radius=10, color="black", fillColor="orange", fillOpacity=1, opacity=1, stroke=TRUE, layerId ="Selected")
+        }
+      }
+    }else{
+      if(input$location3 == "ALL"){
+        leafletProxy("Map3") %>% removeMarker(layerId = "Selected")
+      }else{
+        p2 <- subset(mapData3(), Description.x == input$location3)
         leafletProxy("Map3") %>% 
           setView(lng=p2$lng, lat=p2$lat, input$Map3_zoom) %>%
           addCircleMarkers(p2$lng, p2$lat, radius=10, color="black", fillColor="orange", fillOpacity=1, opacity=1, stroke=TRUE, layerId ="Selected")
       }
-    }else{
-      p2 <- subset(mapData3(), Description.x == input$location3)
-      leafletProxy("Map3") %>% 
-        setView(lng=p2$lng, lat=p2$lat, input$Map3_zoom) %>%
-        addCircleMarkers(p2$lng, p2$lat, radius=10, color="black", fillColor="orange", fillOpacity=1, opacity=1, stroke=TRUE, layerId ="Selected")
     }
-    
   })
 
   
@@ -594,6 +601,11 @@ shinyServer(function(input, output, session){
     }
   })
   
+  output$text3a <- renderText({"Statewide (all sites and years) phenology and weather are in blue." })
+  output$text3b <- renderText({"The selected site's phenology and weather are in orange." })
+  output$text3c <- renderText({"A selected year's phenology and weather are in pink." })
+  
+  
   
   output$graph3phen <- renderPlot({
     if(is.null(get_phen_spec())){
@@ -601,32 +613,78 @@ shinyServer(function(input, output, session){
     }else{
         
         if(input$location3 == "ALL" & input$year3 == "ALL"){
-          gr3phen <- ggplot(data = get_phen_spec(), aes(x = Day_of_Year, y = Gamma)) + theme_bw()
+          gr3phen <- ggplot(data = get_phen_spec(), aes(x = Day_of_Year, y = Gamma))
           gr3phen + geom_line(aes(group = SiteYear), color = "#a6bddb") +
-            stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe")
+            stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe", size = 1.8) + 
+            theme_bw() +
+            labs(x = "Month", y = "Relative abundance",
+              title = "Phenology of relative abundance\n over the monitoring season") +
+              # subtitle = "Darker line shows average phenology for species or site.") +
+            theme(legend.position="none",
+                  strip.text.x = element_text(size=16),
+                  axis.title.x = element_text(size=20),
+                  axis.text.x  = element_text(size=16),
+                  axis.title.y = element_text(size=20),
+                  axis.text.y  = element_text(size=16),
+                  plot.title = element_text(size = 20, face="bold"))
+
         }else{
           if(input$location3 == "ALL" & input$year3 != "ALL"){
-            gr3phen <- ggplot(data = get_phen_spec(), aes(x = Day_of_Year, y = Gamma)) + theme_bw()
+            gr3phen <- ggplot(data = get_phen_spec(), aes(x = Day_of_Year, y = Gamma))
             gr3phen + geom_line(aes(group = SiteYear), color = "#a6bddb") +
-              stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe") +
-              geom_line(data = get_phen_year(), aes(group = Description.x), color = "#fa9fb5", size = 1.2) +
-              stat_summary(data = get_phen_year(), geom = "smooth", fun.y = "mean", color = "#c51b8a", size = 1.75)
-            
+              stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe", size = 1.2) +
+              geom_line(data = get_phen_year(), aes(group = Description.x), color = "#fa9fb5", size = 1.3) +
+              stat_summary(data = get_phen_year(), geom = "smooth", fun.y = "mean", color = "#c51b8a", size = 1.8) +
+              theme_bw() +
+              labs(x = "Month", y = "Relative abundance",
+                   title = "Phenology of relative abundance\n over the monitoring season") +
+              # subtitle = "Darker line shows average phenology for species or site.") +
+              theme(legend.position="none",
+                    strip.text.x = element_text(size=16),
+                    axis.title.x = element_text(size=20),
+                    axis.text.x  = element_text(size=16),
+                    axis.title.y = element_text(size=20),
+                    axis.text.y  = element_text(size=16),
+                    plot.title = element_text(size = 20, face="bold"))
+
           }else{
             if(input$location3 != "ALL" & input$year3 == "ALL"){
-              gr3phen <- ggplot(data = get_phen_spec(), aes(x = Day_of_Year, y = Gamma)) + theme_bw()
+              gr3phen <- ggplot(data = get_phen_spec(), aes(x = Day_of_Year, y = Gamma)) 
               gr3phen + geom_line(aes(group = SiteYear), color = "#a6bddb") +
-                stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe") +
-                geom_line(data = get_phen_site(), aes(group = Year), color = "#fec44f", size = 1.2) +
-                stat_summary(data = get_phen_site(), geom = "smooth", fun.y = "mean", color = "#d95f0e", size = 1.5) 
-              
+                stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe", size = 1.2) +
+                geom_line(data = get_phen_site(), aes(group = Year), color = "#fec44f", size = 1.3) +
+                stat_summary(data = get_phen_site(), geom = "smooth", fun.y = "mean", color = "#d95f0e", size = 1.8) +
+                theme_bw() +
+                labs(x = "Month", y = "Relative abundance",
+                     title = "Phenology of relative abundance\n over the monitoring season") +
+                # subtitle = "Darker line shows average phenology for species or site.") +
+                theme(legend.position="none",
+                      strip.text.x = element_text(size=16),
+                      axis.title.x = element_text(size=20),
+                      axis.text.x  = element_text(size=16),
+                      axis.title.y = element_text(size=20),
+                      axis.text.y  = element_text(size=16),
+                      plot.title = element_text(size = 20, face="bold"))
+
             }else{
-              gr3phen <- ggplot(data = get_phen_spec(), aes(x = Day_of_Year, y = Gamma)) + theme_bw()
+              gr3phen <- ggplot(data = get_phen_spec(), aes(x = Day_of_Year, y = Gamma)) 
               gr3phen + geom_line(aes(group = SiteYear), color = "#a6bddb") +
-                stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe") +
+                stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe", size = 1) +
                 geom_line(data = get_phen_site(), aes(group = Year), color = "#fec44f", size = 1.2) +
-                stat_summary(data = get_phen_site(), geom = "smooth", fun.y = "mean", color = "#d95f0e", size = 1.2) +
-                geom_line(data = get_phen_year(), color = "#c51b8a", size = 1.75)
+                stat_summary(data = get_phen_site(), geom = "smooth", fun.y = "mean", color = "#d95f0e", size = 1.4) +
+                geom_line(data = get_phen_year(), color = "#c51b8a", size = 1.8) +
+                theme_bw() +
+                labs(x = "Month", y = "Relative abundance",
+                     title = "Phenology of relative abundance\n over the monitoring season") +
+                # subtitle = "Darker line shows average phenology for species or site.") +
+                theme(legend.position="none",
+                      strip.text.x = element_text(size=16),
+                      axis.title.x = element_text(size=20),
+                      axis.text.x  = element_text(size=16),
+                      axis.title.y = element_text(size=20),
+                      axis.text.y  = element_text(size=16),
+                      plot.title = element_text(size = 20, face="bold"))
+                     
             }
           }
         }
@@ -639,32 +697,75 @@ shinyServer(function(input, output, session){
       return(NULL)
       }else{
       if(input$location3 == "ALL" & input$year3 == "ALL"){
-        gr3a <- ggplot(data = get_temp_spec(), aes(x = month, y = MeanTemperature)) + theme_bw()
+        gr3a <- ggplot(data = get_temp_spec(), aes(x = month, y = MeanTemperature))
         gr3a + geom_jitter(alpha = 0.3, color = "#a6bddb") +
-          stat_summary(aes(group = month), fun.y = "mean", color = "#2b8cbe", geom = "point", size = 3)
+          stat_summary(aes(group = month), fun.y = "mean", color = "#2b8cbe", geom = "point", size = 4) +
+        theme_bw() +
+          labs(x = "Month", y = "Temperature (Fahrenheit)",
+               title = "Average monthly temperatures\n for sites and years") +
+          # subtitle = "Darker line shows average phenology for species or site.") +
+          theme(legend.position="none",
+                strip.text.x = element_text(size=16),
+                axis.title.x = element_text(size=20),
+                axis.text.x  = element_text(size=16),
+                axis.title.y = element_text(size=20),
+                axis.text.y  = element_text(size=16),
+                plot.title = element_text(size = 20, face="bold"))
       }else{
         if(input$location3 == "ALL" & input$year3 != "ALL"){
-          gr3a <- ggplot(data = get_temp_spec(), aes(x = month, y = MeanTemperature)) + theme_bw()
+          gr3a <- ggplot(data = get_temp_spec(), aes(x = month, y = MeanTemperature))
           gr3a + geom_jitter(alpha = 0.3, color = "#a6bddb") +
-            stat_summary(aes(group = month), fun.y = "mean",  color = "#2b8cbe", geom = "point", size = 1) +
+            stat_summary(aes(group = month), fun.y = "mean",  color = "#2b8cbe", geom = "point", size = 3) +
             geom_jitter(data = get_temp_year(), alpha = 0.9, color = "#fa9fb5", size = 3) +
-            stat_summary(data = get_temp_year(), aes(group = month), fun.y = "median", color = "#c51b8a", geom = "point", size = 4)
-
+            stat_summary(data = get_temp_year(), aes(group = month), fun.y = "median", color = "#c51b8a", geom = "point", size = 5) +
+          theme_bw() +
+            labs(x = "Month", y = "Temperature (Fahrenheit)",
+                 title = "Average monthly temperatures\n for sites and years") +
+            # subtitle = "Darker line shows average phenology for species or site.") +
+            theme(legend.position="none",
+                  strip.text.x = element_text(size=16),
+                  axis.title.x = element_text(size=20),
+                  axis.text.x  = element_text(size=16),
+                  axis.title.y = element_text(size=20),
+                  axis.text.y  = element_text(size=16),
+                  plot.title = element_text(size = 20, face="bold"))
         }else{
           if(input$location3 != "ALL" & input$year3 == "ALL"){
-            gr3a <- ggplot(data = get_temp_spec(), aes(x = month, y = MeanTemperature)) + theme_bw()
+            gr3a <- ggplot(data = get_temp_spec(), aes(x = month, y = MeanTemperature))
             gr3a + geom_jitter(alpha = 0.3, color = "#a6bddb") +
-              stat_summary(aes(group = month), fun.y = "mean",  color = "#2b8cbe",geom = "point", size = 1) +
+              stat_summary(aes(group = month), fun.y = "mean",  color = "#2b8cbe",geom = "point", size = 3) +
               geom_jitter(data = get_temp_site(), alpha = 0.9, color = "#fec44f", size = 3) +
-              stat_summary(data = get_temp_site(), aes(group = month), fun.y = "median", color = "#d95f0e", geom = "point", size = 4)
+              stat_summary(data = get_temp_site(), aes(group = month), fun.y = "median", color = "#d95f0e", geom = "point", size = 5) +
+              theme_bw() +
+              labs(x = "Month", y = "Temperature (Fahrenheit)",
+                   title = "Average monthly temperatures\n for sites and years") +
+              # subtitle = "Darker line shows average phenology for species or site.") +
+              theme(legend.position="none",
+                    strip.text.x = element_text(size=16),
+                    axis.title.x = element_text(size=20),
+                    axis.text.x  = element_text(size=16),
+                    axis.title.y = element_text(size=20),
+                    axis.text.y  = element_text(size=16),
+                    plot.title = element_text(size = 20, face="bold"))
 
           }else{
-            gr3a <- ggplot(data = get_temp_spec(), aes(x = month, y = MeanTemperature)) + theme_bw()
+            gr3a <- ggplot(data = get_temp_spec(), aes(x = month, y = MeanTemperature)) 
             gr3a + geom_jitter(alpha = 0.3, color = "#a6bddb") +
-              stat_summary(aes(group = month), fun.y = "mean",  color = "#2b8cbe",geom = "point", size = 1) +
+              stat_summary(aes(group = month), fun.y = "mean",  color = "#2b8cbe",geom = "point", size = 3) +
               geom_jitter(data = get_temp_site(), alpha = 0.9, color = "#fec44f", size = 3) +
-              stat_summary(data = get_temp_site(), aes(group = month), fun.y = "median", color = "#d95f0e", geom = "point", size = 3) +
-              geom_jitter(data = get_temp_year(), aes(group = month), color = "#c51b8a", size = 5)
+              stat_summary(data = get_temp_site(), aes(group = month), fun.y = "median", color = "#d95f0e", geom = "point", size = 4) +
+              geom_jitter(data = get_temp_year(), aes(group = month), color = "#c51b8a", size = 6) +
+              theme_bw() +
+              labs(x = "Month", y = "Temperature (Fahrenheit)",
+                   title = "Average monthly temperatures\n for sites and years") +
+              # subtitle = "Darker line shows average phenology for species or site.") +
+              theme(legend.position="none",
+                    strip.text.x = element_text(size=16),
+                    axis.title.x = element_text(size=20),
+                    axis.text.x  = element_text(size=16),
+                    axis.title.y = element_text(size=20),
+                    axis.text.y  = element_text(size=16),
+                    plot.title = element_text(size = 20, face="bold"))
         }
       }
     }
@@ -680,32 +781,87 @@ shinyServer(function(input, output, session){
     #     return(NULL)
     #   }else{
         if(input$location3 == "ALL" & input$year3 == "ALL"){
-          gr3b <- ggplot(data = get_gdd_spec(), aes(x = Day_of_Year, y = Cumulative_degree_days)) + theme_bw()
+          gr3b <- ggplot(data = get_gdd_spec(), aes(x = Day_of_Year, y = Cumulative_degree_days)) 
           gr3b + geom_line(aes(group = SiteYear), color = "#a6bddb") +
-            stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe")
+            stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe", size = 1.8) +
+            scale_x_date(labels = function(x) format(x, "%b")) +
+            # annotate("text", x = as.Date("2000-02-01"), y = 2000, label = "<- Earlier warming") + 
+            # annotate("text", x = as.Date("2000-11-01"), y = 200, label = "<- Earlier warming") + 
+            theme_bw() +
+            labs(x = "Month", y = "Accumulated degree-days",
+                 title = "Growing degree-days\n for sites and years") +
+            # subtitle = "Darker line shows average phenology for species or site.") +
+            theme(legend.position="none",
+                  strip.text.x = element_text(size=16),
+                  axis.title.x = element_text(size=20),
+                  axis.text.x  = element_text(size=16),
+                  axis.title.y = element_text(size=20),
+                  axis.text.y  = element_text(size=16),
+                  plot.title = element_text(size = 20, face="bold"))
         }else{
           if(input$location3 == "ALL" & input$year3 != "ALL"){
-            gr3b <- ggplot(data = get_gdd_spec(), aes(x = Day_of_Year, y = Cumulative_degree_days)) + theme_bw()
+            gr3b <- ggplot(data = get_gdd_spec(), aes(x = Day_of_Year, y = Cumulative_degree_days))
             gr3b + geom_line(aes(group = SiteYear), color = "#a6bddb") +
-              stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe") + 
-              geom_line(data = get_gdd_year(), aes(group = Description.x), color = "#fa9fb5", size = 1.2) +
-              stat_summary(data = get_gdd_year(), geom = "smooth", fun.y = "mean", color = "#c51b8a", size = 1.75)
-            
+              stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe", size = 1.2) + 
+              geom_line(data = get_gdd_year(), aes(group = Description.x), color = "#fa9fb5", size = 1.3) +
+              stat_summary(data = get_gdd_year(), geom = "smooth", fun.y = "mean", color = "#c51b8a", size = 1.8) +
+            scale_x_date(labels = function(x) format(x, "%b")) +
+              # annotate("text", x = as.Date("2000-02-01"), y = 2000, label = "<- Earlier warming") + 
+              # annotate("text", x = as.Date("2000-11-01"), y = 200, label = "<- Earlier warming") + 
+              theme_bw() +
+              labs(x = "Month", y = "Accumulated degree-days",
+                   title = "Growing degree-days\n for sites and years") +
+              # subtitle = "Darker line shows average phenology for species or site.") +
+              theme(legend.position="none",
+                    strip.text.x = element_text(size=16),
+                    axis.title.x = element_text(size=20),
+                    axis.text.x  = element_text(size=16),
+                    axis.title.y = element_text(size=20),
+                    axis.text.y  = element_text(size=16),
+                    plot.title = element_text(size = 20, face="bold"))
           }else{
             if(input$location3 != "ALL" & input$year3 == "ALL"){
-              gr3b <- ggplot(data = get_gdd_spec(), aes(x = Day_of_Year, y = Cumulative_degree_days)) + theme_bw()
+              gr3b <- ggplot(data = get_gdd_spec(), aes(x = Day_of_Year, y = Cumulative_degree_days))
               gr3b + geom_line(aes(group = SiteYear), color = "#a6bddb") +
-                stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe") + 
-                geom_line(data = get_gdd_site(), aes(group = year), color = "#fec44f", size = 1.2) +
-                stat_summary(data = get_gdd_site(), geom = "smooth", fun.y = "mean", color = "#d95f0e", size = 1.75) 
+                stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe", size = 1.2) + 
+                geom_line(data = get_gdd_site(), aes(group = year), color = "#fec44f", size = 1.3) +
+                stat_summary(data = get_gdd_site(), geom = "smooth", fun.y = "mean", color = "#d95f0e", size = 1.8) +
+                scale_x_date(labels = function(x) format(x, "%b")) +
+                # annotate("text", x = as.Date("2000-02-01"), y = 2000, label = "<- Earlier warming") + 
+                # annotate("text", x = as.Date("2000-11-01"), y = 200, label = "<- Earlier warming") + 
+                theme_bw() +
+                labs(x = "Month", y = "Accumulated degree-days",
+                     title = "Growing degree-days\n for sites and years") +
+                # subtitle = "Darker line shows average phenology for species or site.") +
+                theme(legend.position="none",
+                      strip.text.x = element_text(size=16),
+                      axis.title.x = element_text(size=20),
+                      axis.text.x  = element_text(size=16),
+                      axis.title.y = element_text(size=20),
+                      axis.text.y  = element_text(size=16),
+                      plot.title = element_text(size = 20, face="bold"))
               
             }else{
-              gr3b <- ggplot(data = get_gdd_spec(), aes(x = Day_of_Year, y = Cumulative_degree_days)) + theme_bw()
+              gr3b <- ggplot(data = get_gdd_spec(), aes(x = Day_of_Year, y = Cumulative_degree_days))
               gr3b + geom_line(aes(group = SiteYear), color = "#a6bddb") +
-                stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe") + 
-                geom_line(data = get_gdd_site(), aes(group = year), color = "#fec44f") +
-                stat_summary(data = get_gdd_site(), geom = "smooth", fun.y = "mean", color = "#d95f0e") +
-                geom_line(data = get_gdd_year(), color = "#c51b8a", size = 1.75)
+                stat_summary(geom="smooth", fun.y="mean", color = "#2b8cbe", size = 1.2) + 
+                geom_line(data = get_gdd_site(), aes(group = year), color = "#fec44f", size = 1.3) +
+                stat_summary(data = get_gdd_site(), geom = "smooth", fun.y = "mean", color = "#d95f0e", size = 1.5) +
+                geom_line(data = get_gdd_year(), color = "#c51b8a", size = 1.8) +
+                scale_x_date(labels = function(x) format(x, "%b")) +
+                # annotate("text", x = as.Date("2000-02-01"), y = 2000, label = "<- Earlier warming") + 
+                # annotate("text", x = as.Date("2000-11-01"), y = 200, label = "<- Earlier warming") + 
+                theme_bw() +
+                labs(x = "Month", y = "Accumulated degree-days",
+                     title = "Growing degree-days\n for sites and years") +
+                # subtitle = "Darker line shows average phenology for species or site.") +
+                theme(legend.position="none",
+                      strip.text.x = element_text(size=16),
+                      axis.title.x = element_text(size=20),
+                      axis.text.x  = element_text(size=16),
+                      axis.title.y = element_text(size=20),
+                      axis.text.y  = element_text(size=16),
+                      plot.title = element_text(size = 20, face="bold"))
             }
           }
         }

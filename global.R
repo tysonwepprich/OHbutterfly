@@ -54,5 +54,6 @@ gdd <- readRDS("gdd.rds")
 names(gdd)[3] <- "Cumulative_degree_days"
 
 temperature <- readRDS("monthlyweather.rds")
+temperature$MeanTemperature <- temperature$MeanTemperature * 1.8 + 32
 
 phenology <- readRDS('phenology.rds')
